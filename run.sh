@@ -2,4 +2,4 @@
 
 # Replace the next shell command with the entrypoint of your solution
 
-echo $@
+echo $@'smtp_client'

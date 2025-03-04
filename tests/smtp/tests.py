@@ -1,10 +1,29 @@
 import os, sys
 import json
 
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
 def send_email(from_address, to_addresses, subject, body, headers=None):
+    print(f"🚀 Enviando email desde {from_address} a {to_addresses}...")
     headerstr = "-h {}" if headers is None else f" -h {headers}"
-    response_string = os.popen(f"sh run.sh -u localhost -p 2525 -f {from_address} -t {to_addresses} -s {subject} {headerstr} -b {body}").read()
-    return json.loads(response_string)
+    
+    command = f"sh run.sh -u localhost -p 2525 -f {from_address} -t {to_addresses} -s {subject} {headerstr} -b {body}"
+    print(f"📌 Ejecutando: {command}")
+
+    print("🔄 Ejecutando el comando...")
+    response_string = os.popen(command).read()
+    print("🔄 Comando ejecutado.")
+    print(f"🔍 Respuesta del servidor: '{response_string}'")
+    
+    try:
+        response = json.loads(response_string)
+    except json.JSONDecodeError:
+        print("❌ Error: La respuesta no es un JSON válido.")
+        response = {}
+
+    return response
+
 
 # Almacena los resultados de las pruebas
 results = []
