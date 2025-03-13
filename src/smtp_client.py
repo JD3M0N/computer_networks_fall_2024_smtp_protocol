@@ -197,7 +197,7 @@ def main():
 
     args = parser.parse_args()
 
-    # Procesamiento de argumentos
+    # Procesamiento de encabezados personalizados
     try:
         if args.header:
             custom_headers = json.loads(" ".join(args.header))
@@ -207,6 +207,13 @@ def main():
                     raise ValueError("Encabezados contienen caracteres no ASCII")
     except Exception as e:
         print(json.dumps({"status_code": 400, "message": f"Error en encabezados: {str(e)}"}))
+        exit(1)
+
+    # Procesamiento de destinatarios (se espera un JSON array)
+    try:
+        recipients = json.loads(" ".join(args.to_mail))
+    except Exception as e:
+        print(json.dumps({"status_code": 400, "message": f"Error en destinatarios: {str(e)}"}))
         exit(1)
 
     # Construcción de componentes del correo
