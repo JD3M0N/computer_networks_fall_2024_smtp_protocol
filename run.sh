@@ -1,5 +1,5 @@
-#!/bin/bash
+!/bin/bash
 
 # Replace the next shell command with the entrypoint of your solution
 
-echo $@'smtp_client'
+python src/smtp_client.py $@
