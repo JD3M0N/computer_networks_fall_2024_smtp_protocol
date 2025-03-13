@@ -198,11 +198,11 @@ def main():
 
         # Generar respuesta basada en resultados
         if result:
-            output = {"status_code": 250, "message": "Correo aceptado para entrega"}
+            output = {"status_code": 250, "message": "Message accepted for delivery"}
         else:
             error_messages = {
-                1: "Dirección de remitente inválida",
-                2: "Dirección de destinatario inválida"
+                1: "Invalid sender address",
+                2: "Invalid recipient address"
             }
             output = {
                 "status_code": 501 if error_type == 1 else 550,
@@ -210,7 +210,7 @@ def main():
             }
             
     except Exception as e:
-        output = {"status_code": 500, "message": f"Error interno: {str(e)}"}
+        output = {"status_code": 500, "message": f"Excepción: {e}"}
 
     print(json.dumps(output))
 
