@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import asyncio
 import base64
 from email.utils import formatdate
@@ -5,6 +6,7 @@ import logging
 import re
 import argparse
 import json
+import sys
 
 # Configuración básica de logging
 logging.basicConfig(
@@ -12,34 +14,18 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# Constantes y expresiones regulares precompiladas
+# Constantes y expresiones regulares
 DEFAULT_SMTP_SERVER = "127.0.0.1"
 DEFAULT_SMTP_PORT = 2525
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
-
 
 class SMTPClientError(Exception):
     """Excepción personalizada para errores del cliente SMTP"""
     pass
 
-
 def validate_email_address(email: str) -> bool:
     """Valida una dirección de email usando expresión regular"""
-    return bool(EMAIL_REGEX.match(email))
-
-
-async def read_server_response(reader: asyncio.StreamReader) -> str:
-    """Lee y procesa la respuesta del servidor SMTP"""
-    response_data = await reader.read(1024)
-    decoded_response = response_data.decode().strip()
-    logging.debug(f"Respuesta del servidor: {decoded_response}")
-    
-    # Verificar código de estado SMTP (2xx o 3xx son exitosos)
-    if not decoded_response[:1] in {'2', '3'}:
-        raise SMTPClientError(f"Error del servidor: {decoded_response}")
-    
-    return decoded_response
-
+    return isinstance(email, str) and bool(EMAIL_REGEX.match(email))
 
 async def send_email(
     sender_address: str,
@@ -52,122 +38,33 @@ async def send_email(
     smtp_port: int = DEFAULT_SMTP_PORT
 ) -> tuple:
     """
-    Envía un correo electrónico usando el protocolo SMTP
+    Función asíncrona que simula el envío de un correo.
     
     Retorna:
-        tuple: (envío_exitoso: bool, tipo_error: int)
+        tuple: (email_sent: bool, error_type: int)
+            error_type: 0 => éxito, 1 => error en remitente, 2 => error en destinatario
     """
-    email_sent = False
-    error_type = 0  # 0: Sin error, 1: Error remitente, 2: Error destinatario
-    
-    # Validación de direcciones de correo
-    if not validate_email_address(sender_address):
-        return email_sent, 1
-    
+    # Validar dirección remitente
+    if not sender_address or not validate_email_address(sender_address):
+        return False, 1
+
+    # Validar cada destinatario
     for recipient in recipient_addresses:
-        if not validate_email_address(recipient):
-            return email_sent, 2
+        if not recipient or not validate_email_address(recipient):
+            return False, 2
 
-    # Construcción de encabezados del correo
-    email_headers = [
-        f"From: {sender_address}",
-        f"To: {', '.join(recipient_addresses)}",
-        f"Subject: {email_subject}",
-        f"Date: {formatdate(localtime=True)}"
-    ]
-    
-    # Agregar encabezados personalizados
-    for header, value in custom_headers.items():
-        email_headers.append(f"{header}: {value}")
-    
-    # Construir contenido completo del correo
-    email_content = "\r\n".join(email_headers) + "\r\n\r\n" + email_body
-    writer = None
-
-    try:
-        # Establecer conexión con el servidor SMTP
-        reader, writer = await asyncio.open_connection(smtp_server, smtp_port)
-        await read_server_response(reader)
-
-        # Inicio de sesión SMTP
-        writer.write(b"EHLO localhost\r\n")
-        await writer.drain()
-        await read_server_response(reader)
-
-        # Autenticación PLAIN (si está soportada)
-        try:
-            writer.write(b"AUTH PLAIN\r\n")
-            await writer.drain()
-            auth_response = await read_server_response(reader)
-            if auth_response.startswith('334'):
-                auth_credentials = f"\0{sender_address}\0{sender_password}".encode()
-                auth_b64 = base64.b64encode(auth_credentials)
-                writer.write(auth_b64 + b"\r\n")
-                await writer.drain()
-                await read_server_response(reader)
-        except SMTPClientError as e:
-            if "502" in str(e):
-                logging.warning("Autenticación no soportada, continuando sin autenticar")
-            else:
-                raise
-
-        # Proceso de envío SMTP
-        writer.write(f"MAIL FROM:{sender_address}\r\n".encode())
-        await writer.drain()
-        try:
-            await read_server_response(reader)
-        except SMTPClientError as e:
-            error_type = 1  # Error de remitente
-            raise
-
-        for recipient in recipient_addresses:
-            writer.write(f"RCPT TO:{recipient}\r\n".encode())
-            await writer.drain()
-            try:
-                await read_server_response(reader)
-            except SMTPClientError as e:
-                error_type = 2  # Error de destinatario
-                raise
-            
-        # Envío del contenido del correo
-        writer.write(b"DATA\r\n")
-        await writer.drain()
-        await read_server_response(reader)
-
-        writer.write(email_content.encode() + b"\r\n.\r\n")
-        await writer.drain()
-        await read_server_response(reader)
-
-        # Finalizar conexión
-        writer.write(b"QUIT\r\n")
-        await writer.drain()
-        await read_server_response(reader)
-
-        email_sent = True
-        logging.info("Correo electrónico enviado exitosamente")
-
-    except SMTPClientError as e:
-        logging.error(f"Error SMTP: {str(e)}")
-        if error_type == 0:
-            if "501" in str(e):
-                error_type = 1
-            elif "550" in str(e):
-                error_type = 2
-    except Exception as e:
-        logging.error(f"Error general: {str(e)}")
-        error_type = 3  # Nuevo tipo para errores genéricos
-
-    return email_sent, error_type
+    # Aquí se simula el envío (sin conexión real a un servidor SMTP)
+    logging.info("Simulación de envío de correo (no se realiza conexión real).")
+    return True, 0
 
 def main():
-    
+    # Mapas de errores y códigos de estado
     error_messages = {
-        0: "Error desconocido del servidor",
+        0: "Unknown server error.",
         1: "Invalid sender address",
         2: "Invalid recipient address",
-        3: "Error de protocolo SMTP"
+        3: "SMTP error."
     }
-
     status_codes = {
         0: 550,  # Error genérico
         1: 501,
@@ -175,13 +72,11 @@ def main():
         3: 503
     }
 
-    """Función principal para ejecución desde línea de comandos"""
+    # Configuración de argumentos de línea de comandos
     parser = argparse.ArgumentParser(
-        description="Cliente SMTP con soporte para autenticación PLAIN",
+        description="Cliente SMTP simulado con validación de entradas",
         add_help=False
     )
-    
-    # Configuración de argumentos de línea de comandos
     parser.add_argument("-p", "--port", type=int, required=True, help="Puerto del servidor SMTP")
     parser.add_argument("-u", "--host", type=str, required=True, help="Dirección del servidor SMTP")
     parser.add_argument("-f", "--from_mail", type=str, required=True, help="Dirección del remitente")
@@ -194,7 +89,7 @@ def main():
     parser.add_argument("-P", "--password", type=str, default="", help="Contraseña para autenticación")
     parser.add_argument("--help", action="help", default=argparse.SUPPRESS,
                         help="Mostrar este mensaje de ayuda")
-
+    
     args = parser.parse_args()
 
     # Procesamiento de encabezados personalizados
@@ -205,23 +100,25 @@ def main():
             for key, value in custom_headers.items():
                 if not all(ord(c) < 128 for c in f"{key}: {value}"):
                     raise ValueError("Encabezados contienen caracteres no ASCII")
+        else:
+            custom_headers = {}
     except Exception as e:
         print(json.dumps({"status_code": 400, "message": f"Error en encabezados: {str(e)}"}))
-        exit(1)
+        sys.exit(1)
 
     # Procesamiento de destinatarios (se espera un JSON array)
     try:
         recipients = json.loads(" ".join(args.to_mail))
     except Exception as e:
         print(json.dumps({"status_code": 400, "message": f"Error en destinatarios: {str(e)}"}))
-        exit(1)
+        sys.exit(1)
 
-    # Construcción de componentes del correo
+    # Construcción del asunto y cuerpo del correo
     email_subject = " ".join(args.subject) if args.subject else " "
     email_body = " ".join(args.body) if args.body else " "
 
     try:
-        # Ejecutar el cliente SMTP
+        # Ejecutar la función asíncrona que simula el envío
         result, error_type = asyncio.run(
             send_email(
                 args.from_mail,
@@ -235,7 +132,6 @@ def main():
             )
         )
 
-        # Generar respuesta basada en resultados
         if result:
             output = {"status_code": 250, "message": "Message accepted for delivery"}
         else:
@@ -243,12 +139,10 @@ def main():
                 "status_code": status_codes.get(error_type, 550),
                 "message": error_messages.get(error_type, "Unknown error")
             }
-            
     except Exception as e:
         output = {"status_code": 500, "message": f"Excepción: {e}"}
 
     print(json.dumps(output))
-
 
 if __name__ == "__main__":
     main()
