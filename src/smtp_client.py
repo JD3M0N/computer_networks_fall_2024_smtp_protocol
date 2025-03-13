@@ -158,7 +158,7 @@ def main():
                         help="Destinatarios en formato JSON array", nargs="+")
     parser.add_argument("-s", "--subject", type=str, help="Asunto del correo", nargs="*")
     parser.add_argument("-b", "--body", type=str, help="Cuerpo del mensaje", nargs="*")
-    parser.add_argument("-H", "--header", type=str, default="{}",
+    parser.add_argument("-h", "--header", type=str, default="{}",
                         help="Encabezados personalizados en formato JSON", nargs="*")
     parser.add_argument("-P", "--password", type=str, default="", help="Contraseña para autenticación")
     parser.add_argument("--help", action="help", default=argparse.SUPPRESS,
